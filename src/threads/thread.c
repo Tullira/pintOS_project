@@ -23,6 +23,7 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+static struct list sleep_list;//New list
 
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -91,6 +92,7 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
+  list_init (&sleep_list);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -313,7 +315,45 @@ thread_yield (void)
   schedule ();
   intr_set_level (old_level);
 }
+void
+thread_sleep(int64_t tick_limit)//New implemented function
+{
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+  
+  ASSERT (!intr_context ());
 
+  old_level = intr_disable ();
+  list_push_back (&sleep_list, &cur->elem); //Pushes current thread to the sleeping threads list
+  cur->status = THREAD_BLOCKED; //updates the Status to blocked
+  cur->tick_limit = tick_limit;//Adds the limit ticks to the thread struct
+  schedule ();
+  intr_set_level (old_level);
+}
+void
+thread_sleep_check(int64_t global_tick)
+{
+  struct list_elem* e;
+  //Now, I will check all sleeping threads to see if any has exceeded its time
+  enum intr_level old_level;
+  struct thread* t;
+  old_level = intr_disable ();//Disable interruptions
+  for(e = list_begin(&sleep_list); e != list_end(&sleep_list);)
+  {
+    t = list_entry(e, struct thread, elem);
+    if( global_tick >= t->tick_limit)
+    {
+      e = list_remove(&t->elem);
+      t->status = THREAD_READY;
+      list_push_back(&ready_list, &t->elem);
+    }
+    else
+    {
+      e = list_next(e);
+    }
+  }
+  intr_set_level (old_level); //Enable interruptions
+}
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void
