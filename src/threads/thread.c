@@ -202,7 +202,9 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  int p = thread_get_priority();
+  if(p < t->priority)//If the recently unblocked thread has more priority than the current thread
+    thread_yield();//Gives place to this recently
   return tid;
 }
 
