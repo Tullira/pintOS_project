@@ -126,8 +126,12 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
+
 void thread_sleep(int64_t); //New funtion to put thread asleep
 void thread_sleep_check(int64_t); //New fuction to check if the thread needs to wake up
+void insert_thread_in_ready_list(struct thread*);//Function that calls insert in order function to ready_list
+bool compare_thread_priorities(const struct list_elem* , const struct list_elem*, void* );//Fuction that compares two threads based on their priority
+
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);

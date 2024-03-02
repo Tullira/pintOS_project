@@ -239,7 +239,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  insert_thread_in_ready_list(t);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -345,7 +345,7 @@ thread_sleep_check(int64_t global_tick)
     {
       e = list_remove(&t->elem);
       t->status = THREAD_READY;
-      list_push_back(&ready_list, &t->elem);
+      insert_thread_in_ready_list(t);
     }
     else
     {
@@ -354,6 +354,19 @@ thread_sleep_check(int64_t global_tick)
   }
   intr_set_level (old_level); //Enable interruptions
 }
+// Fuction that compares two threads based on their priority
+bool compare_thread_priorities(const struct list_elem* a, const struct list_elem* b, void* aux) {
+    struct thread* thread_a = list_entry(a, struct thread, elem);
+    struct thread* thread_b = list_entry(b, struct thread, elem);
+    return thread_a->priority > thread_b->priority;
+}
+
+// Funcrion that calls insert ordered list
+void insert_thread_in_ready_list(struct thread* thread_to_insert) {
+    list_insert_ordered(&ready_list, &thread_to_insert->elem, compare_thread_priorities, NULL);
+}
+
+
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void
