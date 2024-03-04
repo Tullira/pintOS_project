@@ -137,7 +137,7 @@ void thread_recalculate_all(void); //Recalculate recent_cpu, load_avg, priority 
 void thread_recalculate_priority(void);//Recalculate priority for every thread
 int calculate_load_avg(int);
 int calculate_priority(struct thread*);
-
+bool compare_tick(const struct list_elem* , const struct list_elem*, void* );
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);

@@ -158,7 +158,7 @@ thread_tick (void)
       t->recent_cpu = FLOAT_ADD_MIX(t->recent_cpu, 1);
       //Adds 1 to the recent_cpu of the current thread every tick
     }
-    if(timer_ticks() % TIMER_FREQ == 0)
+    if(timer_ticks() % TIMER_FREQ == 0)//For every one second...
     {
       //calculate_all
       struct list_elem* e;
@@ -173,16 +173,23 @@ thread_tick (void)
         struct thread* t = list_entry(e, struct thread, allelem);
         t->recent_cpu = FLOAT_ADD_MIX(FLOAT_MULT(decay,t->recent_cpu),t->nice);
       }
+      
     }
     if(timer_ticks() % 4 == 0)
     {
       //calculate_priority
       struct list_elem* e;
+      struct thread *t;
+      int decay = FLOAT_DIV(FLOAT_MULT_MIX(load_avg,2), FLOAT_ADD_MIX(FLOAT_MULT_MIX(load_avg,2), 1)); //Calculating decay
       for(e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
       {
-        struct thread *t = list_entry(e, struct thread, allelem);
+        t = list_entry(e, struct thread, allelem);
         t->priority = PRI_MAX - FLOAT_INT_PART(FLOAT_DIV_MIX(t->recent_cpu, 4)) - (t->nice * 2);
-      }  
+      } 
+      e = list_rbegin(&ready_list);
+      t = list_entry(e, struct thread, elem);
+      if(t->priority > thread_current()->priority && !intr_context())
+        thread_yield();
     }
   }
   /* Enforce preemption. */
@@ -361,7 +368,10 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  {
+    list_push_back(&ready_list, &cur->elem);
+    list_sort(&ready_list, compare_thread_priorities, NULL);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -375,36 +385,37 @@ thread_sleep(int64_t tick_limit)//New implemented function
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  list_push_back (&sleep_list, &cur->elem); //Pushes current thread to the sleeping threads list
-  cur->status = THREAD_BLOCKED; //updates the Status to blocked
   cur->tick_limit = tick_limit;//Adds the limit ticks to the thread struct
-  schedule ();
+  list_insert_ordered(&sleep_list, &cur->elem, compare_tick, NULL); //Pushes current thread to the sleeping threads list
+  
+  thread_block();
+
   intr_set_level (old_level);
 }
 void
 thread_sleep_check(int64_t global_tick)
 {
+  struct thread* t;
   struct list_elem* e;
   //Now, I will check all sleeping threads to see if any has exceeded its time
-  enum intr_level old_level;
-  struct thread* t;
-  old_level = intr_disable ();//Disable interruptions
-  for(e = list_begin(&sleep_list); e != list_end(&sleep_list);)
+  while(!list_empty(&sleep_list))
   {
+    e = list_front(&sleep_list);
     t = list_entry(e, struct thread, elem);
-    if( global_tick >= t->tick_limit)
-    {
-      e = list_remove(&t->elem);
-      t->status = THREAD_READY;
-      insert_thread_in_ready_list(t);
-    }
-    else
-    {
-      e = list_next(e);
-    }
+    if (t->tick_limit > global_tick)
+      break;
+    list_remove(e);
+    thread_unblock(t);
   }
-  intr_set_level (old_level); //Enable interruptions
 }
+
+bool 
+compare_tick(const struct list_elem* a, const struct list_elem* b, void* aux) {
+  struct thread* thread_a = list_entry(a, struct thread, elem);
+  struct thread* thread_b = list_entry(b, struct thread, elem);
+  return thread_a->tick_limit < thread_b->tick_limit;
+}
+
 // Fuction that compares two threads based on their priority
 bool 
 compare_thread_priorities(const struct list_elem* a, const struct list_elem* b, void* aux) {
@@ -496,6 +507,8 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  if(new_priority > 63) new_priority = 63;
+  else if (new_priority < 0) new_priority = 0;
   thread_current ()->priority = new_priority;
 
   enum intr_level old_level = intr_disable();
