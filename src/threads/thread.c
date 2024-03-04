@@ -431,42 +431,6 @@ insert_thread_in_ready_list(struct thread* thread_to_insert) {
   list_insert_ordered(&ready_list, &thread_to_insert->elem, compare_thread_priorities, NULL);
 }
  
-void
-thread_recalculate_all()
-{
-  struct list_elem* e;
-
-  int ready_threads = list_size(&ready_list); //Gets the amount of ready threads
-  
-  load_avg = calculate_load_avg(ready_threads); //Calculates load_avg
-
-  int decay = FLOAT_DIV(FLOAT_MULT_MIX(load_avg,2), FLOAT_ADD_MIX(FLOAT_MULT_MIX(load_avg,2), 1)); //Calculating decay
-  for(e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
-  {
-    struct thread* t = list_entry(e, struct thread, allelem);
-    t->recent_cpu = FLOAT_ADD_MIX(FLOAT_MULT(decay,t->recent_cpu),t->nice);
-  }
-}
-void
-thread_recalculate_priority()
-{
-  struct list_elem* e;
-  for(e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
-  {
-    struct thread *t = list_entry(e, struct thread, allelem);
-    t->priority = PRI_MAX - FLOAT_INT_PART(FLOAT_DIV_MIX(t->recent_cpu, 4)) - (t->nice * 2);
-  }  
-}
-
-int
-calculate_priority(struct thread* t)
-{
-  int recent_cpu = FLOAT_CONST(t->recent_cpu);
-  int division = FLOAT_DIV_MIX(recent_cpu,4);
-  int nice = t->nice;
-  t->priority = PRI_MAX - FLOAT_INT_PART(division) - nice;
-}
-
 int
 calculate_load_avg(int ready_threads)
 {

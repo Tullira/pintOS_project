@@ -133,10 +133,7 @@ void thread_sleep(int64_t); //New funtion to put thread asleep
 void thread_sleep_check(int64_t); //New fuction to check if the thread needs to wake up
 void insert_thread_in_ready_list(struct thread*);//Function that calls insert in order function to ready_list
 bool compare_thread_priorities(const struct list_elem* , const struct list_elem*, void* );//Fuction that compares two threads based on their priority
-void thread_recalculate_all(void); //Recalculate recent_cpu, load_avg, priority of every thread
-void thread_recalculate_priority(void);//Recalculate priority for every thread
 int calculate_load_avg(int);
-int calculate_priority(struct thread*);
 bool compare_tick(const struct list_elem* , const struct list_elem*, void* );
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
