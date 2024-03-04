@@ -184,6 +184,7 @@ thread_tick (void)
       for(e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
       {
         t = list_entry(e, struct thread, allelem);
+        t->recent_cpu = FLOAT_ADD_MIX(FLOAT_MULT(decay,t->recent_cpu),t->nice);
         t->priority = PRI_MAX - FLOAT_INT_PART(FLOAT_DIV_MIX(t->recent_cpu, 4)) - (t->nice * 2);
       } 
       e = list_rbegin(&ready_list);
@@ -475,17 +476,6 @@ calculate_load_avg(int ready_threads)
   return resultado;
 }
 
-int
-calculate_recent_cpu(struct thread* t)
-{
-  //recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice.
-  int nice = FLOAT_CONST(t->nice);
-  int recentCpu = FLOAT_CONST(t->recent_cpu);
-  int load_2 = FLOAT_MULT_MIX(2,load_avg);
-  int load_2_1 = FLOAT_ADD_MIX(load_2, 1);
-  int result = FLOAT_ADD(FLOAT_MULT(FLOAT_DIV(load_2,load_2_1), recentCpu),nice);
-  result = FLOAT_ROUND(result);
-}
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void
